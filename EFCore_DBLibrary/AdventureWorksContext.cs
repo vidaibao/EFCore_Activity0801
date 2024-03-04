@@ -15,7 +15,7 @@ namespace EFCore_DBLibrary
 
         public AdventureWorksContext()
         {
-            // setting the entire context to disable tracking of entities by default
+            // setting the entire context to disable tracking of entities by default 
             ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
         }
 
