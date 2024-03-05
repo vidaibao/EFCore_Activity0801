@@ -16,14 +16,111 @@ namespace EFCore_Activity0801
         {
             BuildOptions();
 
+            //ListAllSalespeople();
+
+            ShowAllSalespeopleUsingProjection();
+
+
+
+
             //ListPeople();
 
             //SearchPeople();
 
-            FilterAndPageResults();
+            //FilterAndPageResults();
 
         }
+        //--------------------------------------------------------------------------------
+        // Activity 9.1
 
+        // 4
+        private static void ShowAllSalespeopleUsingProjection()
+        {
+            using var db = new AdventureWorksContext(_optionsBuilder.Options);
+            var salesPeople = db.SalesPeople
+                                //.Include(s => s.BusinessEntity)  //This is not needed because the projection is used
+                                //.ThenInclude(b => b.BusinessEntity)
+                                .AsNoTracking()
+                                // Using the projection, EF was able to interpret exactly what you needed and
+                                // only queried for those results
+                                .Select(x => new
+                                {
+                                    x.BusinessEntityId,
+                                    x.BusinessEntity.BusinessEntity.FirstName,
+                                    x.BusinessEntity.BusinessEntity.LastName,
+                                    x.SalesQuota,
+                                    x.SalesYtd,
+                                    x.SalesLastYear
+                                }).ToList();
+
+            Console.WriteLine();
+            Console.WriteLine("ShowAllSalespeopleUsingProjection:");
+            foreach (var sp in salesPeople)
+            {
+                Console.WriteLine($"BID: {sp.BusinessEntityId} | Name: {sp.LastName}" +
+                    $", {sp.FirstName} | Quota: {sp.SalesQuota} | " +
+                    $"YTD Sales: {sp.SalesYtd} | SalesLastYear: {sp.SalesLastYear}");
+            }
+        }
+
+
+
+        private static string GetSalesPersonDetails(SalesPerson sp)
+        {
+            return $"ID: {sp.BusinessEntityId}\t|TID: {sp.TerritoryId}\t\t|Quota:{sp.SalesQuota}\t"
+                    + $"|Bonus: {sp.Bonus}\t|YTDSales: {sp.SalesYtd}\t|Name: \t"
+                    + $"{sp?.BusinessEntity?.BusinessEntity?.FirstName ?? ""}, "
+                    + $"{sp?.BusinessEntity?.BusinessEntity?.LastName ?? ""}";
+        }
+
+        // 72
+        private static void ListAllSalespeople()
+        {
+            using var db = new AdventureWorksContext(_optionsBuilder.Options);
+            var salesPeople = db.SalesPeople
+                                .Include(s => s.BusinessEntity)
+                                .ThenInclude(b => b.BusinessEntity)
+                                .AsNoTracking().ToList();
+            foreach (var salesPerson in salesPeople)
+            {
+                var person = db.People.AsNoTracking().FirstOrDefault(p => p.BusinessEntityId == salesPerson.BusinessEntityId);
+                Console.WriteLine(GetSalesPersonDetails(salesPerson));
+            }
+        }
+
+
+        // 384
+        private static string GetSalesPersonDetails0(SalesPerson sp, Person p)
+        {
+            return $"ID: {sp.BusinessEntityId}\t|TID: {sp.TerritoryId}\t\t|Quota:{sp.SalesQuota}\t"
+                    + $"|Bonus: {sp.Bonus}\t|YTDSales: {sp.SalesYtd}\t|Name: \t"
+                    + $"{p?.FirstName ?? ""}, {p?.LastName ?? ""}";
+        }
+
+        private static void ListAllSalespeople0()
+        {
+            using var db = new AdventureWorksContext(_optionsBuilder.Options);
+            var salesPeople = db.SalesPeople.AsNoTracking().ToList();
+            foreach (var salesPerson in salesPeople)
+            {
+                var person = db.People.AsNoTracking().FirstOrDefault(p => p.BusinessEntityId == salesPerson.BusinessEntityId);
+                Console.WriteLine(GetSalesPersonDetails0(salesPerson, person));
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //--------------------------------------------------------------------------------
         private static void FilterAndPageResults()
         {
             Console.WriteLine("Please Enter the partial First or Last Name, or the Person Type to search for:");
