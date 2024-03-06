@@ -4,6 +4,7 @@ using InventoryHelpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Linq;
+using EFCore_DBLibrary.DTOs;
 
 namespace EFCore_Activity0801
 {
@@ -18,10 +19,11 @@ namespace EFCore_Activity0801
 
             //ListAllSalespeople();
 
-            ShowAllSalespeopleUsingProjection();
+            //ShowAllSalespeopleUsingProjection();
 
-
-
+            // Anonymous class makes unexpected results likes id 220
+            //GenerateSalesReportData();
+            GenerateSalesReportDataToDTO();
 
             //ListPeople();
 
@@ -31,7 +33,95 @@ namespace EFCore_Activity0801
 
         }
         //--------------------------------------------------------------------------------
+        // Activity 9.2 AUTO MAPPER
+        private static void GenerateSalesReportDataToDTO()
+        {
+            Console.WriteLine("What is the minimum amount of sales?");
+            var input = Console.ReadLine();
+            if (!decimal.TryParse(input, out decimal filter))
+            {
+                Console.WriteLine("Bad input");
+                return;
+            }
+
+            using var db = new AdventureWorksContext(_optionsBuilder.Options);
+            var salesReportData = db.SalesPeople.Select(sp => new SalesReportListingDto
+            {
+                BusinessEntityId = sp.BusinessEntityId,
+                FirstName = sp.BusinessEntity.BusinessEntity.FirstName,
+                LastName = sp.BusinessEntity.BusinessEntity.LastName,
+                SalesYtd = sp.SalesYtd,
+                Territories = sp.SalesTerritoryHistories.Select(y => y.Territory.Name),
+                TotalOrders = sp.SalesOrderHeaders.Count(),
+                TotalProductsSold = sp.SalesOrderHeaders
+                                    .SelectMany(soh => soh.SalesOrderDetails)   // id disapeare 220 ???
+                                    .Sum(sod => sod.OrderQty)
+            }).Where(srd => srd.SalesYtd > filter)
+                .OrderBy(srds => srds.LastName)
+                .ThenBy(srds => srds.FirstName)
+                .ThenByDescending(srds => srds.SalesYtd);
+                //.ToList(); // force the system to evaluate the results
+                // database call is not made until after you try to iterate the query, not as the query was built
+
+            foreach (var srd in salesReportData)
+            {
+                Console.WriteLine(srd.ToString());
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+        //--------------------------------------------------------------------------------
         // Activity 9.1
+        private static void GenerateSalesReportData()
+        {
+            Console.WriteLine("What is the minimum amount of sales?");
+            var input = Console.ReadLine();
+            if (!decimal.TryParse(input, out decimal filter))
+            {
+                Console.WriteLine("Bad input");
+                return;
+            }
+
+            using var db = new AdventureWorksContext(_optionsBuilder.Options);
+            var salesReportData = db.SalesPeople.Select(sp => new 
+            {
+                beid = sp.BusinessEntityId,
+                sp.BusinessEntity.BusinessEntity.FirstName,
+                sp.BusinessEntity.BusinessEntity.LastName,
+                sp.SalesQuota,
+                sp.SalesYtd,
+                Territories = sp.SalesTerritoryHistories.Select(y => y.Territory.Name),
+                OrderCount = sp.SalesOrderHeaders.Count(),   // get all the sales orders for the sales person
+                /* Get all of the order details for each order header and then sum up the quantity of products
+                 * sold across all of those order details */
+                TotalProductsSold = sp.SalesOrderHeaders
+                                    .SelectMany(soh => soh.SalesOrderDetails)   // id 220 ???
+                                    .Sum(sod => sod.OrderQty)
+            })  .Where(srd => srd.SalesYtd > filter)
+                .OrderBy(srds => srds.LastName)
+                .ThenBy(srds => srds.FirstName)
+                .ThenByDescending(srds => srds.SalesYtd)
+                .ToList();
+
+            foreach (var srd in salesReportData)
+            {
+                Console.WriteLine($"{srd.beid}| {srd.LastName, -18}, {srd.FirstName, -10}| " +
+                    $"YTD Sales: {srd.SalesYtd} |" +
+                    $"{string.Join(',', srd.Territories)} |" +
+                    $"Order Count: {srd.OrderCount} |" +
+                    $"Products Sold: {srd.TotalProductsSold}");
+            }
+        }
+
 
         // 4
         private static void ShowAllSalespeopleUsingProjection()
